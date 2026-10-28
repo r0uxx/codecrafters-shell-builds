@@ -32,8 +32,13 @@ mkdir -p ~/.local/bin && mv codecrafters-shell ~/.local/bin/
 
 (`~/.local/bin` has to be on your `PATH`, it is by default on most Linux distros.)
 
-Downloaded with a browser instead? Then unpack it first: `tar -xzf codecrafters-shell-*.tar.gz && ./codecrafters-shell`.
-The macOS builds are signed and notarized by Apple, so they open without a Gatekeeper warning.
+Downloaded with a browser instead? Then unpack it and start it from Terminal, in the folder it's in:
+`tar -xzf codecrafters-shell-*.tar.gz && ./codecrafters-shell`.
+
+**macOS: don't double-click it in Finder.** Finder hands command-line programs to Terminal as a document, and
+macOS blocks every downloaded one opened that way ("Apple could not verify…"), even signed and notarized ones,
+a [known macOS bug](https://developer.apple.com/forums/thread/706379). Started from Terminal it goes through the
+normal check, which the signed and notarized macOS builds pass.
 
 ### Windows
 
