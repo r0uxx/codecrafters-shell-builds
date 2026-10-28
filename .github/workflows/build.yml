@@ -97,7 +97,7 @@ jobs:
         run: |
           mkdir -p release
           if [ "$RUNNER_OS" = "Windows" ]; then
-            cp dist/codecrafters-shell.exe release/
+            cp dist/codecrafters-shell.exe release/codecrafters-shell-${{ matrix.name }}.exe
           else
             tar -czf release/codecrafters-shell-${{ matrix.name }}.tar.gz -C dist codecrafters-shell
           fi
@@ -106,3 +106,25 @@ jobs:
         with:
           name: codecrafters-shell-${{ matrix.name }}
           path: release/*
+
+  # Publishes every successful build as a release, so /releases/latest/download/<file> always points at the newest one
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Publish release
+        run: |
+          sha=$(gh api repos/r0uxx/codecrafters-shell-python/commits/${{ inputs.ref }} --jq .sha)
+          gh release create "build-${{ github.run_number }}" release/* \
+            -R "${{ github.repository }}" \
+            --title "Build ${{ github.run_number }}" \
+            --notes "Built from r0uxx/codecrafters-shell-python@$sha. How to download and run: https://github.com/${{ github.repository }}#download"
