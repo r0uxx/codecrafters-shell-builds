@@ -70,19 +70,27 @@ jobs:
           grep -q "hello" <<< "$output"
           grep -q "tac is a shell builtin" <<< "$output"
 
+      # A bare binary can't be stapled, Gatekeeper looks the ticket up online on first launch. So a submission
+      # Apple is slow on doesn't have to block the build: once Apple accepts it, the uploaded binary passes too.
       - name: Notarize
         if: env.CODESIGN_IDENTITY != ''
         run: |
+          auth=(--apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD")
           codesign --verify --strict --verbose=2 dist/codecrafters-shell
           ditto -c -k --keepParent dist/codecrafters-shell notarize.zip
-          result=$(xcrun notarytool submit notarize.zip --wait --output-format json \
-            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD")
-          echo "$result"
-          if [ "$(jq -r .status <<< "$result")" != "Accepted" ]; then
-            xcrun notarytool log "$(jq -r .id <<< "$result")" \
-              --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
-            exit 1
-          fi
+          id=$(xcrun notarytool submit notarize.zip --output-format json "${auth[@]}" | jq -r .id)
+          echo "Submission id: $id"
+          xcrun notarytool wait "$id" --timeout 20m "${auth[@]}" || true
+          status=$(xcrun notarytool info "$id" --output-format json "${auth[@]}" | jq -r .status)
+          echo "Status: $status"
+          case "$status" in
+            Accepted) ;;
+            "In Progress")
+              echo "::warning::Apple is still notarizing $id, the binary is signed and will pass Gatekeeper once Apple accepts it" ;;
+            *)
+              xcrun notarytool log "$id" "${auth[@]}"
+              exit 1 ;;
+          esac
 
       # A tarball keeps the executable permission, which plain artifact zips lose
       - name: Package
